@@ -4,7 +4,7 @@
 -- Configuration de l'encodage
 SET NAMES utf8mb4;
 SET CHARACTER SET utf8mb4;
-SET collation_connection = 'utf8mb4_general_ci';
+SET collation_connection = 'utf8mb4_unicode_ci';
 
 -- ============================================
 -- INSERTION DES UTILISATEURS
@@ -85,7 +85,7 @@ INSERT INTO cours (code, nom, description, professeur, filiere, credits, semestr
 ('INF103', 'Bases de données I', 'Introduction aux SGBD et SQL', 'Paul Mbarga', 'Informatique', 6, 'S2', 30, 'Mercredi', '08:00:00', '10:00:00', 'Salle B203', 'INF101', '2025-01-20', '2025-05-20', 'actif', 0.7, 0.3, NOW(), NOW()),
 ('INF201', 'Algorithmes Avancés', 'Structures de données avancées et complexité', 'Paul Mbarga', 'Informatique', 8, 'S1', 25, 'Jeudi', '14:00:00', '16:00:00', 'Salle B205', 'INF101', '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
 ('INF202', 'Architecture des Ordinateurs', 'Fonctionnement interne des ordinateurs', 'Paul Mbarga', 'Informatique', 6, 'S2', 30, 'Vendredi', '10:00:00', '12:00:00', 'Salle B206', 'INF101', '2025-01-20', '2025-05-20', 'actif', 0.7, 0.3, NOW(), NOW()),
-('INF301', 'Intelligence Artificielle', 'Introduction à l\'IA et machine learning', 'Paul Mbarga', 'Informatique', 8, 'S1', 20, 'Lundi', '14:00:00', '16:00:00', 'Salle B301', 'INF201', '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
+('INF301', 'Intelligence Artificielle', "Introduction à l'IA et machine learning", 'Paul Mbarga', 'Informatique', 8, 'S1', 20, 'Lundi', '14:00:00', '16:00:00', 'Salle B301', 'INF201', '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
 
 -- Mathématiques - Cours pour tous les niveaux
 ('MAT101', 'Analyse I', 'Calcul différentiel et intégral', 'Claire Ngono', 'Mathématiques', 6, 'S1', 50, 'Lundi', '10:00:00', '12:00:00', 'Salle A101', NULL, '2024-09-15', '2025-01-15', 'actif', 0.7, 0.3, NOW(), NOW()),
@@ -108,7 +108,7 @@ INSERT INTO cours (code, nom, description, professeur, filiere, credits, semestr
 ('CHI102', 'Chimie des Solutions', 'Équilibres chimiques en solution', 'Élodie Kouam', 'Chimie', 6, 'S1', 40, 'Mardi', '10:00:00', '12:00:00', 'Labo C102', NULL, '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
 ('CHI201', 'Chimie Organique I', 'Fonctionnalités organiques de base', 'Élodie Kouam', 'Chimie', 8, 'S2', 35, 'Mercredi', '08:00:00', '10:00:00', 'Labo C201', 'CHI101', '2025-01-20', '2025-05-20', 'actif', 0.6, 0.4, NOW(), NOW()),
 ('CHI202', 'Chimie Minérale', 'Éléments et composés minéraux', 'Élodie Kouam', 'Chimie', 6, 'S2', 35, 'Jeudi', '14:00:00', '16:00:00', 'Labo C202', 'CHI101', '2025-01-20', '2025-05-20', 'actif', 0.6, 0.4, NOW(), NOW()),
-('CHI301', 'Chimie Analytique', 'Méthodes d\'analyse chimique', 'Élodie Kouam', 'Chimie', 8, 'S1', 30, 'Vendredi', '10:00:00', '12:00:00', 'Labo C301', 'CHI201', '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
+('CHI301', 'Chimie Analytique', "Méthodes d'analyse chimique", 'Élodie Kouam', 'Chimie', 8, 'S1', 30, 'Vendredi', '10:00:00', '12:00:00', 'Labo C301', 'CHI201', '2024-09-15', '2025-01-15', 'actif', 0.6, 0.4, NOW(), NOW()),
 ('CHI302', 'Chimie des Matériaux', 'Structure et propriétés des matériaux', 'Élodie Kouam', 'Chimie', 8, 'S2', 25, 'Lundi', '16:00:00', '18:00:00', 'Labo C302', 'CHI202', '2025-01-20', '2025-05-20', 'actif', 0.6, 0.4, NOW(), NOW()),
 
 -- Biologie - Cours pour tous les niveaux
@@ -257,7 +257,7 @@ WHERE n.note_finale IS NULL;
 
 -- Insertion de quelques cours terminés pour tester les statistiques
 UPDATE cours 
-SET statut = 'Terminé', date_fin = '2024-06-30'
+SET statut = 'termine', date_fin = '2024-06-30'
 WHERE id IN (1, 7, 13, 19, 25);
 
 -- Insertion de quelques étudiants inactifs
@@ -267,18 +267,8 @@ WHERE id IN (6, 12, 17, 22, 27);
 
 -- Insertion d'un étudiant diplômé
 UPDATE etudiants 
-SET statut = 'Diplomé'
+SET statut = 'diplome'
 WHERE id = 30;
-
--- ============================================
--- MESSAGES ET NOTIFICATIONS (OPTIONNEL)
--- ============================================
-
-INSERT INTO messages (expediteur_id, destinataire_id, sujet, contenu, statut, created_at) VALUES
-(1, 2, 'Réunion pédagogique', 'Cher collègue, veuillez noter la réunion pédagogique du vendredi à 10h.', 'non_lu', NOW()),
-(2, 1, 'Problème de salle', 'La salle B201 est indisponible lundi prochain.', 'lu', NOW()),
-(3, 4, 'Coordination des examens', 'Coordination pour les examens de fin de semestre.', 'non_lu', NOW())
-ON DUPLICATE KEY UPDATE contenu = VALUES(contenu);
 
 -- ============================================
 -- CONFIRMATION DES DONNÉES INSÉRÉES
