@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { ICours, ICoursCreate, ICoursUpdate } from '../types/ICours';
 import Cours from '../Models/Cours';
-import { ApiErrorResponse, ApiResponseOk } from '../types/api';
+import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk, HTTP_STATUS } from '../types/api';
 
 // Créer un nouveau cours
 export const createCours = async (req: Request, res: Response) => {
@@ -12,19 +12,33 @@ export const createCours = async (req: Request, res: Response) => {
     
     let response_api: ApiResponseOk<ICours> = {
       success: true,
-      status_code: 201,
+      status_code: HTTP_STATUS.CREATED,
+      data: {} as ICours
+    };
+    let response_validation_errors : ApiErrorValidationResponse = {
+      success: false,
+      status_code: 400,
+      message: 'Erreur de validation des données.',
+      errors: {}
+    };
+    let response_error_api : ApiErrorValidationResponse = {
+      success: false,
+      status_code: HTTP_STATUS.CONFLICT,
+      message: 'Erreur de validation des données.',
+      errors: {}
     };
 
     if (missing.length > 0) {
-      response_api = {
-        ...response_api,
-        success: false,
-        status_code: 400,
+      response_validation_errors = {
+        ...response_validation_errors,
         message: `Champs requis manquants: ${missing.join(', ')}`,
-      };
-      return res.status(response_api.status_code).json(response_api);
+        errors: missing.reduce((acc, field) => {
+          acc[field] = `Le champ ${field} est requis.`;
+          return acc;
+        }, {} as Record<string, string>)
+      }
+      return res.status(response_validation_errors.status_code).json(response_validation_errors);
     }
-
     // Vérifier si le code existe déjà
     const existingCours = await Cours.findByCode(newCours.code);
     if (existingCours) {

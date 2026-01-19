@@ -7,13 +7,18 @@
     "live-mode": "nodemon --watch src --ext ts,js --exec \"ts-node\" src/index.ts",
     "test-db": "ts-node src/Config/test-db-connection.ts",
     "init-db": "node scripts/init-db.js",
-    "seed-db": "node scripts/seeder.js"
+    "seed-db": "node scripts/seeder.js",
+    "seed": "ts-node scripts/seed.ts",
+    "seed:test": "ts-node scripts/seed.ts test",
+    "seed:production": "ts-node scripts/seed.ts production",
+    "seed:clear": "ts-node scripts/seed.ts clear"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -22,6 +27,7 @@
     "mysql2": "^3.16.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.5",

@@ -1,31 +1,41 @@
 import type { Request, Response } from 'express';
 import { IEtudiant, IEtudiantFormRequest, IPaginationResult } from '../types/Istudents';
 import Etudiant from '../Models/Etudiant';
-import { ApiErrorResponse, ApiResponseOk } from '../types/api';
+import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk } from '../types/api';
+import { ICours } from '../types/ICours';
 
 export const createEtudiant = async (req: Request, res: Response) => {
   try {
     const newEtudiant = req.body as IEtudiantFormRequest;
-    const required = ['prenom', 'nom', 'date_naissance', 'email', 'date_inscription', 'filiere', 'niveau', 'created_by'];
+    const required = ['prenom', 'nom', 'date_naissance', 'email', 'date_inscription', 'filiere', 'niveau'];
     const missing = required.filter((k) => !(newEtudiant as any)[k]);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
       status_code: 201,
+      data: {} as IEtudiant
+    };
+    let response_validation_errors : ApiErrorValidationResponse = {
+      success: false,
+      status_code: 400,
+      message: 'Erreur de validation des données.',
+      errors: {}
     };
     if (missing.length > 0) {
-      response_api = {
-        ...response_api,
-        success: false,
-        status_code: 400,
+      response_validation_errors = {
+        ...response_validation_errors,
         message: `Champs requis manquants: ${missing.join(', ')}`,
+        errors: missing.reduce((acc, field) => {
+          acc[field] = `Le champ ${field} est requis.`;
+          return acc;
+        }, {} as Record<string, string>)
       }
-      return res.status(response_api.status_code).json(response_api);
+      return res.status(response_validation_errors.status_code).json(response_validation_errors);
     }
     const etudiant = await Etudiant.create(newEtudiant);
     response_api = {
       ...response_api,
       message: 'Création réussi',
-      data: etudiant
+      data: etudiant as IEtudiant
     };
     res.status(response_api.status_code).json(response_api);
   } catch (error) {
@@ -45,29 +55,34 @@ export const getEtudiantById = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
-      status_code: 201,
+      status_code: 200,
+      data: {} as IEtudiant
     };
-    if (isNaN(id)){
-       response_api = {
-        ...response_api , 
-        status_code: 404,
-        message: 'ID invalide.' 
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 404,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)){
+       response_not_found = {
+        ...response_not_found , 
+        status_code: 400,
+        error: 'ID invalide.' 
       }
-       return res.status(response_api.status_code).json(response_api)};
-
-    const etudiant = await Etudiant.findById(id);
+      return res.status(response_not_found.status_code).json(response_not_found)};
+      
+      const etudiant = await Etudiant.findById(id);
     if (!etudiant) {
-      response_api = {
-        ...response_api , 
-        status_code: 404,
-        message: 'Étudiant non trouvé.'
+      response_not_found = {
+        ...response_not_found , 
+        error: 'ID invalide.' 
       }
-      return res.status(response_api.status_code).json(response_api)
+      return res.status(response_not_found.status_code).json(response_not_found)
     }else{
       response_api = {
         ...response_api , 
         message: 'Etudiant trouvé', 
-        data: etudiant as IEtudiant
+        data: etudiant
       }
 
     }
@@ -96,7 +111,8 @@ export const getEtudiants = async (req: Request, res: Response) => {
     if (req.query.search) filters.search = String(req.query.search);
     let response_api : ApiResponseOk<IPaginationResult<IEtudiant[]>> = {
       success: true,
-      status_code: 201,
+      status_code: 200,
+      data: {} as IPaginationResult<IEtudiant[]>
     };
     const result = await Etudiant.findAll(page, limit, filters);
     response_api = {
@@ -124,29 +140,34 @@ export const updateEtudiant = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
-      status_code: 201,
+      status_code: 200,
+      data: {} as IEtudiant
     };
-    if (isNaN(id)){
-       response_api = {
-        ...response_api , 
-        status_code: 404,
-        message: 'ID invalide.' 
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 400,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)){
+       response_not_found = {
+        ...response_not_found , 
+        error: 'ID invalide.' 
       }
-      return res.status(response_api.status_code).json(response_api)
+      return res.status(response_not_found.status_code).json(response_not_found)
     };
-
+    
     const updated = await Etudiant.update(id, req.body);
     if (!updated) {
-      response_api = {
-        ...response_api , 
+      response_not_found = {
+        ...response_not_found,
         status_code: 404,
-        message: 'Étudiant non trouvé.'
+        error: 'ID invalide.' 
       }
     }else{
       response_api = {
         ...response_api , 
         message: 'Mise à jour réussi', 
-        data: updated as IEtudiant
+        data: updated
       }
     };
     console.log('updated', updated);
@@ -168,13 +189,19 @@ export const deleteEtudiant = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
-      status_code: 201,
+      status_code: 200,
+      data: {} as IEtudiant
     };
-    if (isNaN(id)){
-      response_api = {
-        ...response_api , 
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 404,
+      message: 'Étudiant non trouvé.'
+    };
+    if (Number.isNaN(id)){
+      response_not_found = {
+        ...response_not_found , 
         status_code: 400,
-        message: 'ID invalide.' 
+        error: 'ID invalide.' 
       }
     }else{
       const deleted = await Etudiant.delete(id);
@@ -210,9 +237,15 @@ export const toggleStatut = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
-      status_code: 201,
+      status_code: 200,
+      data: {} as IEtudiant
     };
-    if (isNaN(id)){
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 404,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)){
       response_api = {
         ...response_api , 
         status_code: 400,
@@ -224,14 +257,13 @@ export const toggleStatut = async (req: Request, res: Response) => {
       if (!updated){
         response_api={
           ...response_api,
-          status_code: 400,
-          message: 'Étudiant non trouvé.'
+          status_code: 404
         }
       }else{
         response_api ={
           ...response_api,
           message: `Statut ${statut} appliqué avec succès`,
-          data: updated as IEtudiant
+          data: updated
         }
       }
     }
@@ -252,39 +284,121 @@ export const toggleStatut = async (req: Request, res: Response) => {
 export const getCours = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: 'ID invalide.' });
+    let response_api : ApiResponseOk<unknown> = {
+      success: true,
+      status_code: 200,
+      data: {} as unknown
+    };
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 400,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)) {
+      response_not_found = {
+        ...response_not_found,
+        message: 'ID invalide'
+      }
+      return res.status(response_not_found.status_code).json(response_not_found)
+    };
 
     const cours = await Etudiant.getCours(id);
-    res.json(cours);
+    response_api = {
+      ...response_api,
+      message: 'Cours récupérées avec success',
+      data: cours as unknown
+    };
+    res.status(response_api.status_code).json(response_api);
   } catch (error) {
-    console.error('getCours error:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la récupération des cours.' });
+    const response_api_error : ApiErrorResponse = {
+      success: false,
+      status_code: 500,
+      message: 'Erreur serveur lors de la récupération des cours.',
+      error: JSON.stringify(error)
+    };
+    console.error('getCours error:', response_api_error);
+    res.status(response_api_error.status_code).json(response_api_error);
   }
 };
 
 export const getNotes = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: 'ID invalide.' });
+    let response_api : ApiResponseOk<unknown> = {
+      success: true,
+      status_code: 200,
+      data: {} as unknown
+    };
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 400,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)) {
+      response_not_found = {
+        ...response_not_found,
+        message: 'ID invalide'
+      }
+      return res.status(response_not_found.status_code).json(response_not_found)
+    };
 
     const notes = await Etudiant.getNotes(id);
-    res.json(notes);
+    response_api = {
+      ...response_api,
+      message: 'Notes récupérées avec success',
+      data: notes as unknown
+    };
+    res.status(response_api.status_code).json(response_api);
   } catch (error) {
-    console.error('getNotes error:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la récupération des notes.' });
+    const response_api_error : ApiErrorResponse = {
+      success: false,
+      status_code: 500,
+      message: 'Erreur serveur lors de la récupération des notes.',
+      error: JSON.stringify(error)
+    };
+    console.error('getNotes error:', response_api_error);
+    res.status(response_api_error.status_code).json(response_api_error);
+   
   }
 };
 
 export const getMoyenneGenerale = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ message: 'ID invalide.' });
+    let response_api : ApiResponseOk<unknown> = {
+      success: true,
+      status_code: 200,
+      data: {} as unknown
+    };
+    let response_not_found : ApiErrorResponse ={
+      success: false,
+      status_code: 400,
+      message: 'Étudiant non trouvé.'
+    }
+    if (Number.isNaN(id)) {
+      response_not_found = {
+        ...response_not_found,
+        message: 'ID invalide'
+      }
+      return res.status(response_not_found.status_code).json(response_not_found)
+    };
 
     const moyenne = await Etudiant.getMoyenneGenerale(id);
-    res.json(moyenne);
+    response_api = {
+      ...response_api,
+      message: 'Notes récupérées avec success',
+      data: moyenne as unknown
+    };
+    res.status(response_api.status_code).json(response_api);
   } catch (error) {
-    console.error('getMoyenneGenerale error:', error);
-    res.status(500).json({ message: 'Erreur serveur lors du calcul de la moyenne.' });
+    const response_api_error : ApiErrorResponse = {
+      success: false,
+      status_code: 500,
+      message: 'Erreur serveur lors du calcul de la moyenne.',
+      error: JSON.stringify(error)
+    };
+    console.error('getMoyenneGenerale error:', response_api_error);
+    res.status(response_api_error.status_code).json(response_api_error);
   }
 };
 
@@ -293,8 +407,14 @@ export const getStatistiques = async (_req: Request, res: Response) => {
     const stats = await Etudiant.getStatistiques();
     res.json(stats);
   } catch (error) {
-    console.error('getStatistiques error:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la récupération des statistiques.' });
+    const response_api_error : ApiErrorResponse = {
+      success: false,
+      status_code: 500,
+      message: 'Erreur serveur lors de la récupération des statistiques.', 
+      error: JSON.stringify(error)
+    };
+    console.error('getStatistiques error:', response_api_error);
+    res.status(response_api_error.status_code).json(response_api_error);
   }
 };
 
@@ -304,7 +424,14 @@ export const searchEtudiants = async (req: Request, res: Response) => {
     const rows = await Etudiant.search(criteria);
     res.json(rows);
   } catch (error) {
-    console.error('searchEtudiants error:', error);
-    res.status(500).json({ message: 'Erreur serveur lors de la recherche.' });
+    const response_api_error : ApiErrorResponse = {
+      success: false,
+      status_code: 500,
+      message: 'Erreur serveur lors de la recherche.',
+      error: JSON.stringify(error)
+    };
+    console.error('searchEtudiants error:', response_api_error);
+    res.status(response_api_error.status_code).json(response_api_error);
+
   }
 };

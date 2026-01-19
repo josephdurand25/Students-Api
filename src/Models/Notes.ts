@@ -1,37 +1,48 @@
 import pool from '../Config/db.config';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { INote } from '../types/INote';
+import { INote, INoteDetails, IGradeBatch, IGradeStatistics } from '../types/INote';
 
 console.log('DEBUG Note - pool keys:', pool && Object.keys(pool));
 
 class Note {
-  // Calculer la note finale selon les pondérations
+  // Calculer la note finale selon la formule du trigger SQL
+  // IMPORTANT: Cette méthode est pour référence côté backend
+  // La note_finale est calculée AUTOMATIQUEMENT par le trigger SQL
   static calculerNoteFinal(note_cc?: number, note_examen?: number, note_tp?: number): number {
-    const weights = {
-      cc: 0.3,      // 30% CC
-      examen: 0.6,  // 60% Examen
-      tp: 0.1       // 10% TP
-    };
+    // Si CC et Examen uniquement: CC (40%) + Examen (60%)
+    if (note_cc !== undefined && note_cc !== null && 
+        note_examen !== undefined && note_examen !== null && 
+        !note_tp) {
+      return Number(((note_cc * 0.4) + (note_examen * 0.6)).toFixed(2));
+    }
+    
+    // Si CC, Examen et TP: CC (30%) + Examen (50%) + TP (20%)
+    if (note_cc !== undefined && note_cc !== null && 
+        note_examen !== undefined && note_examen !== null && 
+        note_tp !== undefined && note_tp !== null) {
+      return Number(((note_cc * 0.3) + (note_examen * 0.5) + (note_tp * 0.2)).toFixed(2));
+    }
 
+    // Calcul partiel si seulement certaines notes sont présentes
     let total = 0;
     let weightSum = 0;
 
     if (note_cc !== undefined && note_cc !== null) {
-      total += note_cc * weights.cc;
-      weightSum += weights.cc;
+      total += note_cc * (note_tp ? 0.3 : 0.4);
+      weightSum += (note_tp ? 0.3 : 0.4);
     }
 
     if (note_examen !== undefined && note_examen !== null) {
-      total += note_examen * weights.examen;
-      weightSum += weights.examen;
+      total += note_examen * (note_tp ? 0.5 : 0.6);
+      weightSum += (note_tp ? 0.5 : 0.6);
     }
 
     if (note_tp !== undefined && note_tp !== null) {
-      total += note_tp * weights.tp;
-      weightSum += weights.tp;
+      total += note_tp * 0.2;
+      weightSum += 0.2;
     }
 
-    return weightSum > 0 ? Math.round((total / weightSum) * 100) / 100 : 0;
+    return weightSum > 0 ? Number((total / weightSum).toFixed(2)) : 0;
   }
 
   // Obtenir la mention selon la note
@@ -48,30 +59,32 @@ class Note {
     console.log('Couche modèle - données d\'entrée note', noteData);
     
     const {
-      etudiant_id, cours_id, note_cc, note_examen, note_tp,
-      type_evaluation, session, commentaire
+      etudiant_id, matiere_code, note_cc, note_examen, note_tp,
+      type_evaluation, session, commentaire, saisie_par_enseignant_id
     } = noteData;
 
-    // Calculer la note finale
-    const note_finale = this.calculerNoteFinal(note_cc, note_examen, note_tp);
+    // NOTE: note_finale sera calculée automatiquement par le trigger SQL
+    // Pas besoin de la calculer ici
 
     const params = [
       etudiant_id,
-      cours_id,
+      matiere_code,
       note_cc ?? null,
       note_examen ?? null,
       note_tp ?? null,
-      note_finale,
-      type_evaluation ?? 'examen',
+      null, // note_finale sera calculée par le trigger
+      type_evaluation ?? 'EXAMEN',
       false, // validee
-      session ?? 'normale',
-      commentaire ?? null
+      null, // date_validation
+      commentaire ?? null,
+      session ?? 'NORMALE',
+      saisie_par_enseignant_id ?? null
     ];
 
-    const query = `INSERT INTO notes 
-      (etudiant_id, cours_id, note_cc, note_examen, note_tp, note_finale,
-       type_evaluation, validee, session, commentaire)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO Note 
+      (etudiant_id, matiere_code, note_cc, note_examen, note_tp, note_finale,
+       type_evaluation, validee, date_validation, commentaire, session, saisie_par_enseignant_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     console.log('Paramètres SQL:', params);
 
@@ -88,33 +101,28 @@ class Note {
 
   // Créer plusieurs notes en batch (saisie de classe)
   static async createBatch(batch: IGradeBatch): Promise<boolean> {
-    const { cours_id, session, notes } = batch;
+    const { matiere_code, session, notes } = batch;
 
     try {
       // Utiliser une transaction pour garantir l'atomicité
       await pool.query('START TRANSACTION');
 
       for (const noteEntry of notes) {
-        const note_finale = this.calculerNoteFinal(
-          noteEntry.note_cc,
-          noteEntry.note_examen,
-          noteEntry.note_tp
-        );
-
+        // Le trigger calculera automatiquement note_finale
         await pool.execute(
-          `INSERT INTO notes 
-           (etudiant_id, cours_id, note_cc, note_examen, note_tp, note_finale,
-            type_evaluation, validee, session, commentaire)
-           VALUES (?, ?, ?, ?, ?, ?, 'examen', false, ?, ?)`,
+          `INSERT INTO Note 
+           (etudiant_id, matiere_code, note_cc, note_examen, note_tp, note_finale,
+            type_evaluation, validee, session, commentaire, saisie_par_enseignant_id)
+           VALUES (?, ?, ?, ?, ?, NULL, 'EXAMEN', false, ?, ?, ?)`,
           [
             noteEntry.etudiant_id,
-            cours_id,
+            matiere_code,
             noteEntry.note_cc ?? null,
             noteEntry.note_examen ?? null,
             noteEntry.note_tp ?? null,
-            note_finale,
             session,
-            noteEntry.commentaire ?? null
+            noteEntry.commentaire ?? null,
+            null // saisie_par_enseignant_id à fournir si nécessaire
           ]
         );
       }
@@ -128,17 +136,20 @@ class Note {
     }
   }
 
-  // Trouver une note par ID avec détails
+  // Trouver une note par ID avec détails (utilise la vue SQL)
   static async findById(id: number): Promise<INoteDetails | null> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
         n.*,
         e.numero_etudiant,
-        e.nom as etudiant_nom,
-        e.prenom as etudiant_prenom,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits as cours_credits,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.nom as nom_matiere,
+        m.unite_enseignement_code,
+        ue.nom as nom_ue,
+        ue.coefficient as coefficient_ue,
+        ens_user.nom as nom_enseignant,
+        ens_user.prenom as prenom_enseignant,
         CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis,
         CASE
           WHEN n.note_finale < 10 THEN 'Ajourné'
@@ -147,14 +158,18 @@ class Note {
           WHEN n.note_finale < 16 THEN 'Bien'
           ELSE 'Très Bien'
         END as mention
-      FROM notes n
-      INNER JOIN etudiants e ON n.etudiant_id = e.id
-      INNER JOIN cours c ON n.cours_id = c.id
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
+      LEFT JOIN Enseignant ens ON n.saisie_par_enseignant_id = ens.id
+      LEFT JOIN Utilisateur ens_user ON ens.id = ens_user.id
       WHERE n.id = ?`,
       [id]
     );
-
-    return (rows as RowDataPacket[])[0] || null;
+    const row = rows[0];
+    return row as INoteDetails || null;
   }
 
   // Récupérer toutes les notes avec pagination
@@ -164,11 +179,11 @@ class Note {
       SELECT 
         n.*,
         e.numero_etudiant,
-        e.nom as etudiant_nom,
-        e.prenom as etudiant_prenom,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits as cours_credits,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.code as matiere_code,
+        m.nom as nom_matiere,
+        ue.credits as cours_credits,
         CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis,
         CASE
           WHEN n.note_finale < 10 THEN 'Ajourné'
@@ -177,17 +192,23 @@ class Note {
           WHEN n.note_finale < 16 THEN 'Bien'
           ELSE 'Très Bien'
         END as mention
-      FROM notes n
-      INNER JOIN etudiants e ON n.etudiant_id = e.id
-      INNER JOIN cours c ON n.cours_id = c.id
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
       WHERE 1=1
     `;
     const params: any[] = [];
 
     // Appliquer les filtres
-    if (filters.cours_id) {
-      query += ' AND n.cours_id = ?';
-      params.push(filters.cours_id);
+    if (filters.matiere_code) {
+      query += ' AND n.matiere_code = ?';
+      params.push(filters.matiere_code);
+    }
+    if (filters.unite_enseignement_code) {
+      query += ' AND m.unite_enseignement_code = ?';
+      params.push(filters.unite_enseignement_code);
     }
     if (filters.etudiant_id) {
       query += ' AND n.etudiant_id = ?';
@@ -197,6 +218,10 @@ class Note {
       query += ' AND n.session = ?';
       params.push(filters.session);
     }
+    if (filters.type_evaluation) {
+      query += ' AND n.type_evaluation = ?';
+      params.push(filters.type_evaluation);
+    }
     if (filters.validee !== undefined) {
       query += ' AND n.validee = ?';
       params.push(filters.validee);
@@ -205,9 +230,13 @@ class Note {
       query += ' AND (n.note_finale >= 10) = ?';
       params.push(filters.admis);
     }
+    if (filters.saisie_par_enseignant_id) {
+      query += ' AND n.saisie_par_enseignant_id = ?';
+      params.push(filters.saisie_par_enseignant_id);
+    }
 
     const baseQuery = query;
-    const finalQuery = `${baseQuery} ORDER BY c.nom, e.nom, e.prenom LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    const finalQuery = `${baseQuery} ORDER BY m.nom, u.nom, u.prenom LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
     // Exécuter la requête principale
     const [rows] = await pool.execute<RowDataPacket[]>(finalQuery, params);
@@ -219,25 +248,24 @@ class Note {
     return {
       data: rows as INoteDetails[],
       pagination: {
-        page: isNaN(page) ? parseInt(page.toString()) : page ?? 1,
-        limit: isNaN(limit) ? parseInt(limit.toString()) : limit ?? 10,
-        total: (countRows as RowDataPacket[])[0]?.total ?? 0,
-        totalPages: Math.ceil(((countRows as RowDataPacket[])[0]?.total ?? 0) / limit)
+        page: page ?? 1,
+        limit: limit ?? 10,
+        total: countRows[0]?.total ?? 0,
+        totalPages: Math.ceil((countRows[0]?.total ?? 0) / limit)
       }
     };
   }
 
-  // Récupérer les notes d'un cours
-  static async findByCours(coursId: number): Promise<INoteDetails[]> {
+  // Récupérer les notes d'une matière
+  static async findByMatiere(matiereCode: string): Promise<INoteDetails[]> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
         n.*,
         e.numero_etudiant,
-        e.nom as etudiant_nom,
-        e.prenom as etudiant_prenom,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits as cours_credits,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.nom as nom_matiere,
+        ue.credits as cours_credits,
         CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis,
         CASE
           WHEN n.note_finale < 10 THEN 'Ajourné'
@@ -246,12 +274,14 @@ class Note {
           WHEN n.note_finale < 16 THEN 'Bien'
           ELSE 'Très Bien'
         END as mention
-      FROM notes n
-      INNER JOIN etudiants e ON n.etudiant_id = e.id
-      INNER JOIN cours c ON n.cours_id = c.id
-      WHERE n.cours_id = ?
-      ORDER BY e.nom, e.prenom`,
-      [coursId]
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
+      WHERE n.matiere_code = ?
+      ORDER BY u.nom, u.prenom`,
+      [matiereCode]
     );
 
     return rows as INoteDetails[];
@@ -263,11 +293,11 @@ class Note {
       `SELECT 
         n.*,
         e.numero_etudiant,
-        e.nom as etudiant_nom,
-        e.prenom as etudiant_prenom,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits as cours_credits,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.code as matiere_code,
+        m.nom as nom_matiere,
+        ue.credits as cours_credits,
         CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis,
         CASE
           WHEN n.note_finale < 10 THEN 'Ajourné'
@@ -276,11 +306,13 @@ class Note {
           WHEN n.note_finale < 16 THEN 'Bien'
           ELSE 'Très Bien'
         END as mention
-      FROM notes n
-      INNER JOIN etudiants e ON n.etudiant_id = e.id
-      INNER JOIN cours c ON n.cours_id = c.id
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
       WHERE n.etudiant_id = ?
-      ORDER BY c.nom`,
+      ORDER BY m.nom`,
       [etudiantId]
     );
 
@@ -292,23 +324,12 @@ class Note {
     const fields: string[] = [];
     const values: any[] = [];
 
-    // Si les notes sont modifiées, recalculer la note finale
-    if (noteData.note_cc !== undefined || noteData.note_examen !== undefined || noteData.note_tp !== undefined) {
-      // Récupérer la note actuelle
-      const currentNote = await this.findById(id);
-      if (!currentNote) return null;
-
-      const note_finale = this.calculerNoteFinal(
-        noteData.note_cc !== undefined ? noteData.note_cc : currentNote.note_cc,
-        noteData.note_examen !== undefined ? noteData.note_examen : currentNote.note_examen,
-        noteData.note_tp !== undefined ? noteData.note_tp : currentNote.note_tp
-      );
-
-      noteData.note_finale = note_finale;
-    }
+    // NOTE: Si note_cc, note_examen ou note_tp sont modifiés,
+    // le trigger SQL recalculera automatiquement note_finale
+    // Donc on ne calcule PAS note_finale ici
 
     Object.entries(noteData).forEach(([key, value]) => {
-      if (value !== undefined && key !== 'id') {
+      if (value !== undefined && key !== 'id' && key !== 'note_finale') {
         fields.push(`${key} = ?`);
         values.push(value);
       }
@@ -317,7 +338,7 @@ class Note {
     if (fields.length === 0) return this.findById(id);
 
     values.push(id);
-    const query = `UPDATE notes SET ${fields.join(', ')} WHERE id = ?`;
+    const query = `UPDATE Note SET ${fields.join(', ')} WHERE id = ?`;
     
     await pool.execute(query, values);
     return this.findById(id);
@@ -326,21 +347,20 @@ class Note {
   // Supprimer une note
   static async delete(id: number): Promise<boolean> {
     const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM notes WHERE id = ?',
+      'DELETE FROM Note WHERE id = ?',
       [id]
     );
     return (result.affectedRows ?? 0) > 0;
   }
 
   // Valider une note
-  static async validate(id: number, userId: number): Promise<INoteDetails | null> {
+  static async validate(id: number, enseignantId: number): Promise<INoteDetails | null> {
     await pool.execute(
-      `UPDATE notes 
+      `UPDATE Note 
        SET validee = TRUE, 
-           validee_par = ?, 
-           date_validation = NOW() 
+           date_validation = CURDATE()
        WHERE id = ?`,
-      [userId, id]
+      [id]
     );
 
     return this.findById(id);
@@ -349,9 +369,8 @@ class Note {
   // Invalider une note (retirer la validation)
   static async invalidate(id: number): Promise<INoteDetails | null> {
     await pool.execute(
-      `UPDATE notes 
+      `UPDATE Note 
        SET validee = FALSE, 
-           validee_par = NULL, 
            date_validation = NULL 
        WHERE id = ?`,
       [id]
@@ -360,8 +379,8 @@ class Note {
     return this.findById(id);
   }
 
-  // Obtenir les statistiques d'un cours
-  static async getStatistiques(coursId: number): Promise<IGradeStatistics> {
+  // Obtenir les statistiques d'une matière
+  static async getStatistiques(matiereCode: string): Promise<IGradeStatistics> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
         AVG(note_finale) as moyenne_classe,
@@ -374,16 +393,16 @@ class Note {
         COUNT(CASE WHEN note_finale >= 14 AND note_finale < 16 THEN 1 END) as bien,
         COUNT(CASE WHEN note_finale >= 16 THEN 1 END) as tres_bien,
         COUNT(*) as total
-      FROM notes
-      WHERE cours_id = ? AND validee = TRUE`,
-      [coursId]
+      FROM Note
+      WHERE matiere_code = ? AND validee = TRUE`,
+      [matiereCode]
     );
 
-    const stats = (rows as RowDataPacket[])[0];
+    const stats = rows[0];
 
     if (!stats || stats.total === 0) {
       return {
-        cours_id: coursId,
+        matiere_code: matiereCode,
         moyenne_classe: 0,
         note_min: 0,
         note_max: 0,
@@ -395,12 +414,13 @@ class Note {
           assez_bien: 0,
           bien: 0,
           tres_bien: 0
-        }
+        },
+        nombre_notes: 0
       };
     }
 
     return {
-      cours_id: coursId,
+      matiere_code: matiereCode,
       moyenne_classe: Math.round(stats.moyenne_classe * 100) / 100,
       note_min: stats.note_min,
       note_max: stats.note_max,
@@ -412,7 +432,8 @@ class Note {
         assez_bien: stats.assez_bien,
         bien: stats.bien,
         tres_bien: stats.tres_bien
-      }
+      },
+      nombre_notes: stats.total
     };
   }
 
@@ -420,23 +441,26 @@ class Note {
   static async getMoyenneEtudiant(etudiantId: number): Promise<any> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
-        AVG(n.note_finale) as moyenne_generale,
-        COUNT(*) as nombre_cours,
-        SUM(CASE WHEN n.note_finale >= 10 THEN c.credits ELSE 0 END) as credits_obtenus,
-        SUM(c.credits) as credits_totaux
-      FROM notes n
-      INNER JOIN cours c ON n.cours_id = c.id
+        AVG(n.note_finale) as moyenne,
+        COUNT(*) as nombre_matieres,
+        SUM(CASE WHEN n.note_finale >= 10 THEN ue.credits ELSE 0 END) as credits_obtenus,
+        SUM(ue.credits) as credits_totaux,
+        COUNT(CASE WHEN n.validee = TRUE THEN 1 END) as nombre_notes_validees
+      FROM Note n
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
       WHERE n.etudiant_id = ? AND n.validee = TRUE`,
       [etudiantId]
     );
 
-    const result = (rows as RowDataPacket[])[0];
+    const result = rows[0];
 
     return {
-      moyenne_generale: result.moyenne_generale ? Math.round(result.moyenne_generale * 100) / 100 : 0,
-      nombre_cours: result.nombre_cours || 0,
-      credits_obtenus: result.credits_obtenus || 0,
-      credits_totaux: result.credits_totaux || 0
+      moyenne: result?.moyenne ? Math.round(result?.moyenne * 100) / 100 : 0,
+      nombre_matieres: result?.nombre_matieres || 0,
+      credits_obtenus: result?.credits_obtenus || 0,
+      credits_totaux: result?.credits_totaux || 0,
+      nombre_notes_validees: result?.nombre_notes_validees || 0
     };
   }
 
@@ -445,18 +469,21 @@ class Note {
     const [notes] = await pool.execute<RowDataPacket[]>(
       `SELECT 
         n.*,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits,
+        m.code as matiere_code,
+        m.nom as nom_matiere,
+        ue.credits,
         CASE WHEN n.note_finale >= 10 THEN 'Admis' ELSE 'Ajourné' END as resultat
-      FROM notes n
-      INNER JOIN cours c ON n.cours_id = c.id
-      INNER JOIN inscriptions i ON i.etudiant_id = n.etudiant_id AND i.cours_id = n.cours_id
+      FROM Note n
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
+      INNER JOIN GroupeCours gc ON ue.groupe_cours_code = gc.code
+      INNER JOIN InscriptionGroupe ig ON gc.code = ig.groupe_cours_code AND ig.etudiant_id = n.etudiant_id
       WHERE n.etudiant_id = ? 
-        AND i.annee_academique = ?
-        AND c.semestre = ?
+        AND ig.annee_academique = ?
+        AND gc.semestre = ?
         AND n.validee = TRUE
-      ORDER BY c.code`,
+        AND ig.statut = 'VALIDE'
+      ORDER BY m.code`,
       [etudiantId, anneeAcademique, semestre]
     );
 
@@ -472,7 +499,7 @@ class Note {
     const credits_totaux = notes.reduce((sum: number, n: any) => sum + n.credits, 0);
 
     return {
-      notes: notes as RowDataPacket[],
+      notes: notes,
       moyenne_generale: Math.round(moyenne_generale * 100) / 100,
       credits_obtenus,
       credits_totaux
@@ -485,11 +512,11 @@ class Note {
       SELECT 
         n.*,
         e.numero_etudiant,
-        e.nom as etudiant_nom,
-        e.prenom as etudiant_prenom,
-        c.code as cours_code,
-        c.nom as cours_nom,
-        c.credits as cours_credits,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.code as matiere_code,
+        m.nom as nom_matiere,
+        ue.credits as cours_credits,
         CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis,
         CASE
           WHEN n.note_finale < 10 THEN 'Ajourné'
@@ -498,16 +525,18 @@ class Note {
           WHEN n.note_finale < 16 THEN 'Bien'
           ELSE 'Très Bien'
         END as mention
-      FROM notes n
-      INNER JOIN etudiants e ON n.etudiant_id = e.id
-      INNER JOIN cours c ON n.cours_id = c.id
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
       WHERE 1=1
     `;
     const params: any[] = [];
 
-    if (criteria.cours_id) {
-      query += ' AND n.cours_id = ?';
-      params.push(criteria.cours_id);
+    if (criteria.matiere_code) {
+      query += ' AND n.matiere_code = ?';
+      params.push(criteria.matiere_code);
     }
     if (criteria.etudiant_id) {
       query += ' AND n.etudiant_id = ?';
@@ -516,6 +545,10 @@ class Note {
     if (criteria.session) {
       query += ' AND n.session = ?';
       params.push(criteria.session);
+    }
+    if (criteria.type_evaluation) {
+      query += ' AND n.type_evaluation = ?';
+      params.push(criteria.type_evaluation);
     }
     if (criteria.validee !== undefined) {
       query += ' AND n.validee = ?';
@@ -530,9 +563,34 @@ class Note {
       params.push(criteria.note_max);
     }
 
-    query += ' ORDER BY c.nom, e.nom LIMIT 100';
+    query += ' ORDER BY m.nom, u.nom LIMIT 100';
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
+    return rows as INoteDetails[];
+  }
+
+  // Obtenir les notes par enseignant (pour ses matières)
+  static async findByEnseignant(enseignantId: number): Promise<INoteDetails[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 
+        n.*,
+        e.numero_etudiant,
+        u.nom as nom_etudiant,
+        u.prenom as prenom_etudiant,
+        m.code as matiere_code,
+        m.nom as nom_matiere,
+        ue.credits as cours_credits,
+        CASE WHEN n.note_finale >= 10 THEN 1 ELSE 0 END as admis
+      FROM Note n
+      INNER JOIN Etudiant e ON n.etudiant_id = e.id
+      INNER JOIN Utilisateur u ON e.id = u.id
+      INNER JOIN Matiere m ON n.matiere_code = m.code
+      INNER JOIN UniteEnseignement ue ON m.unite_enseignement_code = ue.code
+      WHERE m.enseignant_id = ?
+      ORDER BY m.nom, u.nom`,
+      [enseignantId]
+    );
+
     return rows as INoteDetails[];
   }
 }
