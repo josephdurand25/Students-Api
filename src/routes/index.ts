@@ -4,9 +4,7 @@ import ueRoutes from './ueRoutes';
 import matiereRoutes from './matiereRoutes';
 import groupUeRoutes from './groupeCoursRoutes';
 import salleRoutes from './salleRoutes';
-import filiereRoute from './filiereRoutes'
-
-import coursesRoutes from './coursesRoutes';
+import filiereRoute from './filiereRoutes';
 
 const router: Router = express.Router();
 

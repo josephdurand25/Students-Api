@@ -9,7 +9,7 @@
     // See also https://aka.ms/tsconfig/module
     "module": "commonjs",
     "target": "esnext",
-    "types": [],
+    "types": ["node", "jest"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -42,5 +42,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-  }
+  },
+  "include": [
+    "src",
+    "tests"
+, "fourtout/group-cours.test.ts", "fourtout/matieres.test.ts", "fourtout/filieres.test.ts", "fourtout/salles.test.ts"  ]
 }

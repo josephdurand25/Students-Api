@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { IEtudiant, IEtudiantFormRequest, IPaginationResult } from '../types/Istudents';
 import Etudiant from '../Models/Etudiant';
-import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk } from '../types/api';
+import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk, HTTP_STATUS } from '../types/api';
 import { ICours } from '../types/ICours';
 
 export const createEtudiant = async (req: Request, res: Response) => {
@@ -11,12 +11,12 @@ export const createEtudiant = async (req: Request, res: Response) => {
     const missing = required.filter((k) => !(newEtudiant as any)[k]);
     let response_api : ApiResponseOk<IEtudiant> = {
       success: true,
-      status_code: 201,
+      status_code: HTTP_STATUS.CREATED,
       data: {} as IEtudiant
     };
     let response_validation_errors : ApiErrorValidationResponse = {
       success: false,
-      status_code: 400,
+      status_code: HTTP_STATUS.BAD_REQUEST,
       message: 'Erreur de validation des données.',
       errors: {}
     };
@@ -29,6 +29,7 @@ export const createEtudiant = async (req: Request, res: Response) => {
           return acc;
         }, {} as Record<string, string>)
       }
+      console.log(response_validation_errors);
       return res.status(response_validation_errors.status_code).json(response_validation_errors);
     }
     const etudiant = await Etudiant.create(newEtudiant);

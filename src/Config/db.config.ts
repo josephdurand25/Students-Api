@@ -18,15 +18,18 @@ const poolConfig: PoolOptions & { enableKeepAlive?: boolean; keepAliveInitialDel
 const pool: Pool = createPool(poolConfig);
 
 // Test de la connexion
-(async () => {
+export const testDbConnection = async () => {
   try {
     const connection = await pool.getConnection();
     console.log('✔ Connexion MySQL établie avec succès');
     connection.release();
   } catch (err) {
-    console.error('✖ Erreur de connexion MySQL: ✖', (err as Error).message ?? err);
-    process.exit(1);
+    console.error(
+      '✖ Erreur de connexion MySQL:',
+      (err as Error).message ?? err
+    );
+    throw err;
   }
-})();
+};
 
 export default pool;

@@ -8,7 +8,7 @@ const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || '';
-const SQL_PATH = path.resolve(__dirname, '../src/Database/database_v2.sql');
+const SQL_PATH = path.resolve(__dirname, '../src/Database/database_v3.sql');
 
 if (!DB_NAME) {
   console.error('✖ DB_NAME not set in environment.');

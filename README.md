@@ -70,4 +70,7 @@
 | GET     | `/api/groupes-cours/:id/students` | Étudiants inscrits au groupe  |
 
 
-###
+## Résultat des test
+
+### Etudiants:
+![alt text](./uploads/tests/image.png)

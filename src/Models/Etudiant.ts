@@ -9,7 +9,8 @@ console.log('DEBUG Etudiant - pool keys:', pool && Object.keys(pool));
 
 class Etudiant {
   // Créer un nouvel étudiant
-  
+  protected static students_table = 'etudiant';
+  protected static users_table = 'utilisateur';
   
   static async create(etudiantData: IEtudiantFormRequest): Promise<IEtudiant | null> {
     console.log('couche modèle - donnée d\'entrée', etudiantData);
@@ -32,9 +33,11 @@ class Etudiant {
 
       // 1. Insérer dans Utilisateur
       const userQuery = `
-        INSERT INTO Utilisateur (nom, prenom, email, password_hash, telephone, role, statut)
+        INSERT INTO ${Etudiant.users_table} (nom, prenom, email, password_hash, telephone, role, statut)
         VALUES (?, ?, ?, ?, ?, 'ETUDIANT', 'ACTIF')
       `;
+      
+      console.log('requête d\'insertion etu', userQuery);
       const [userResult] = await pool.execute<ResultSetHeader>(userQuery, [
         nom,
         prenom,
@@ -42,35 +45,40 @@ class Etudiant {
         'default_password_hash', // À remplacer par un vrai hash
         telephone ?? null
       ]);
-
+      console.log('resultat insertion users',userResult);
+      
       const userId = userResult.insertId;
 
       // 2. Insérer dans Etudiant
       const etudiantQuery = `
-        INSERT INTO Etudiant 
+        INSERT INTO ${Etudiant.students_table} 
           (id, numero_etudiant, date_naissance, lieu_naissance, genre, nationalite, 
           adresse_complete, region_origine, filiere, niveau, statut_academique, 
           photo_profil, date_inscription)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'non_inscrit', ?, ?)
       `;
       
+      
+      console.log('requête d\'insertion etu', etudiantQuery);
       await pool.execute(etudiantQuery, [
         userId,
         numero_etudiant,
-        date_naissance ?? null,
-        lieu_naissance, // lieu_naissance (nouveau champ)
-        genre ?? null,
-        nationalite, // nationalite (nouveau champ)
-        adresse_complete, // adresse_complete (remplace adresse_rue, ville, etc.)
-        region_origine, // region_origine (nouveau champ)
+        date_naissance,
+        lieu_naissance, 
+        genre ,
+        nationalite, 
+        adresse_complete, 
+        region_origine, 
         filiere,
         niveau,
-        photo_profil ?? null,
-        date_inscription ?? null
+        photo_profil ,
+        date_inscription 
       ]);
-
+      
       // Valider la transaction
       await pool.query('COMMIT');
+      
+      console.log('transaction validé');
 
       return this.findById(userId);
     } catch (error) {
@@ -93,7 +101,7 @@ class Etudiant {
         TIMESTAMPDIFF(YEAR, e.date_naissance, CURDATE()) as age,
         CONCAT(u.prenom, ' ', u.nom) as nom_complet
       FROM Utilisateur u
-      INNER JOIN Etudiant e ON u.id = e.id
+      INNER JOIN ${Etudiant.students_table} e ON u.id = e.id
       WHERE u.id = ?`,
       [id]
     );
@@ -141,7 +149,7 @@ class Etudiant {
         e.nationalite, e.adresse_complete, e.region_origine,
         e.filiere, e.niveau, e.statut_academique, e.photo_profil, e.date_inscription
       FROM Utilisateur u
-      INNER JOIN Etudiant e ON u.id = e.id
+      INNER JOIN ${Etudiant.students_table} e ON u.id = e.id
       WHERE e.numero_etudiant = ?`,
       [numeroEtudiant]
     );
@@ -159,7 +167,7 @@ class Etudiant {
     // Chercher le dernier numéro avec ce pattern en utilisant une requête SQL brute
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT numero_etudiant 
-        FROM etudiants 
+        FROM ${Etudiant.students_table}
         WHERE numero_etudiant LIKE ?
         ORDER BY numero_etudiant DESC 
         LIMIT 1`,
@@ -202,7 +210,7 @@ class Etudiant {
         e.nationalite, e.adresse_complete, e.region_origine,
         e.filiere, e.niveau, e.statut_academique, e.photo_profil, e.date_inscription
       FROM Utilisateur u
-      INNER JOIN Etudiant e ON u.id = e.id
+      INNER JOIN ${Etudiant.students_table} e ON u.id = e.id
       WHERE u.email = ?`,
       [email]
     );
@@ -218,7 +226,7 @@ class Etudiant {
         e.numero_etudiant, e.date_naissance, e.genre,
         e.filiere, e.niveau, e.statut_academique
       FROM Utilisateur u
-      INNER JOIN Etudiant e ON u.id = e.id
+      INNER JOIN ${Etudiant.students_table} e ON u.id = e.id
       WHERE 1=1
     `;
     const params = [];
@@ -304,7 +312,7 @@ class Etudiant {
       // Mettre à jour Etudiant si nécessaire
       if (etudiantFields.length > 0) {
         etudiantValues.push(id);
-        const etudiantQuery = `UPDATE Etudiant SET ${etudiantFields.join(', ')} WHERE id = ?`;
+        const etudiantQuery = `UPDATE ${Etudiant.students_table} SET ${etudiantFields.join(', ')} WHERE id = ?`;
         await pool.execute(etudiantQuery, etudiantValues);
       }
 
@@ -320,7 +328,7 @@ class Etudiant {
   // Supprimer un étudiant
   static async delete(id: number) {
     const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM etudiants WHERE id = ?',
+      `DELETE FROM ${Etudiant.students_table} WHERE id = ?`,
       [id]
     );
     return (result.affectedRows ?? 0) > 0;
@@ -402,13 +410,13 @@ class Etudiant {
         SUM(CASE WHEN e.statut_academique = 'diplome' THEN 1 ELSE 0 END) as diplomes,
         SUM(CASE WHEN e.statut_academique = 'abandon' THEN 1 ELSE 0 END) as abandons,
         AVG(TIMESTAMPDIFF(YEAR, e.date_naissance, CURDATE())) as age_moyen
-      FROM Etudiant e
+      FROM ${Etudiant.students_table} e
       GROUP BY e.filiere
       ORDER BY total DESC`
     );
 
     const [totalRow] = await pool.execute<RowDataPacket[]>(
-      'SELECT COUNT(*) as total FROM Etudiant'
+      'SELECT COUNT(*) as total FROM ${Etudiant.students_table}'
     );
     
     const [statsRow] = await pool.execute<RowDataPacket[]>(
@@ -416,7 +424,7 @@ class Etudiant {
         SUM(CASE WHEN statut_academique = 'inscrit' THEN 1 ELSE 0 END) as inscrits,
         SUM(CASE WHEN statut_academique = 'diplome' THEN 1 ELSE 0 END) as diplomes,
         SUM(CASE WHEN statut_academique = 'non_inscrit' THEN 1 ELSE 0 END) as non_inscrits
-      FROM Etudiant`
+      FROM ${Etudiant.students_table}`
     );
     
     return {
@@ -437,7 +445,7 @@ class Etudiant {
         TIMESTAMPDIFF(YEAR, e.date_naissance, CURDATE()) as age,
         CONCAT(u.prenom, ' ', u.nom) as nom_complet
       FROM Utilisateur u
-      INNER JOIN Etudiant e ON u.id = e.id
+      INNER JOIN ${Etudiant.students_table} e ON u.id = e.id
       WHERE 1=1
     `;
     const params: any[] = [];

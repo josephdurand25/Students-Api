@@ -1,10 +1,10 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "live-mode": "nodemon --watch src --ext ts,js --exec \"ts-node\" src/index.ts",
+    "test": "jest",
+    "live-mode": "nodemon --watch src --ext ts,js --exec \"ts-node\" src/server.ts",
     "test-db": "ts-node src/Config/test-db-connection.ts",
     "init-db": "node scripts/init-db.js",
     "seed-db": "node scripts/seeder.js",
@@ -30,8 +30,13 @@
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.0.5",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

@@ -4,11 +4,7 @@ import cors from 'cors';
 import routes from './routes';
 import path from 'path';
 
-// import userRoutes from './routes/usersRoutes';
-
-
 const app = express();
-const PORT = process.env.PORT || 3002;
 
 // Middleware
 app.use(express.json());
@@ -26,13 +22,10 @@ app.use((req: Request, _res: Response, next) => {
   next();
 });
 
-// app.use('/api', userRoutes);
 app.use('/api', routes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello, TypeScript and Express for my student management app!');
 });
   
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+export default app;
