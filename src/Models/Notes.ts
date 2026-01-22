@@ -58,6 +58,11 @@ class Note {
   static async create(noteData: Partial<INote>): Promise<INote | null> {
     console.log('Couche modèle - données d\'entrée note', noteData);
     
+    if (!noteData || !noteData.etudiant_id || !noteData.matiere_code) {
+      console.error('etudiant_id et matiere_code requis');
+      return null;
+    }
+    
     const {
       etudiant_id, matiere_code, note_cc, note_examen, note_tp,
       type_evaluation, session, commentaire, saisie_par_enseignant_id
@@ -67,18 +72,18 @@ class Note {
     // Pas besoin de la calculer ici
 
     const params = [
-      etudiant_id,
-      matiere_code,
-      note_cc ?? null,
-      note_examen ?? null,
-      note_tp ?? null,
+      etudiant_id || null,
+      matiere_code || null,
+      note_cc || null,
+      note_examen || null,
+      note_tp || null,
       null, // note_finale sera calculée par le trigger
-      type_evaluation ?? 'EXAMEN',
+      type_evaluation || 'EXAMEN',
       false, // validee
       null, // date_validation
-      commentaire ?? null,
-      session ?? 'NORMALE',
-      saisie_par_enseignant_id ?? null
+      commentaire || null,
+      session || 'NORMALE',
+      saisie_par_enseignant_id || null
     ];
 
     const query = `INSERT INTO Note 

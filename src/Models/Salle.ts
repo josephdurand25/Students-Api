@@ -1,6 +1,7 @@
-import { ISalle, ISalleCreate, ISalleUpdate, TypeSalle } from '../types/ISalle';
+import { ISalle, ISalleCreate, ISalleUpdate } from '../types/ISalle';
 import pool from '../Config/db.config';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { TypeSalle } from '../types/IGeneral';
 
 console.log('DEBUG Salle - pool keys:', pool && Object.keys(pool));
 
@@ -17,10 +18,10 @@ class Salle {
     const equipementsJSON = equipements ? JSON.stringify(equipements) : null;
 
     const params = [
-      code,
-      nom,
-      capacite,
-      type,
+      code || null,
+      nom || null,
+      capacite || null,
+      type || null,
       equipementsJSON
     ];
 
@@ -34,7 +35,7 @@ class Salle {
       const [result] = await pool.execute<ResultSetHeader>(query, params);
       console.log('Result insert SQL', result);
 
-      return this.findByCode(code);
+      return code ? this.findByCode(code) : null;
     } catch (error) {
       console.error('Erreur création salle:', error);
       throw error;
@@ -42,7 +43,9 @@ class Salle {
   }
 
   // Trouver une salle par code
-  static async findByCode(code: string): Promise<ISalle | null> {
+  static async findByCode(code?: string): Promise<ISalle | null> {
+    if (!code) return null;
+    
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT * FROM Salle WHERE code = ?',
       [code]

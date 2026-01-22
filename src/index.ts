@@ -9,7 +9,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({ 
-  origin: (process.env.FRONTEND_ORIGIN && process.env.FRONTEND_ORIGIN.startsWith('http') ? process.env.FRONTEND_ORIGIN : `http://${process.env.FRONTEND_ORIGIN || 'localhost:3001'}`), 
+  origin: [(process.env.FRONTEND_ORIGIN && process.env.FRONTEND_ORIGIN.startsWith('http') ? process.env.FRONTEND_ORIGIN : `http://${process.env.FRONTEND_ORIGIN || 'localhost:3001'}`) , `http://sigif-cm.com`], 
   credentials: true })
 );
 // Servir les fichiers statiques

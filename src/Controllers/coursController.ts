@@ -6,8 +6,8 @@ import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk, HTTP_STATU
 // Créer un nouveau cours
 export const createCours = async (req: Request, res: Response) => {
   try {
-    const newCours = req.body as ICoursCreate;
-    const required = ['code', 'nom', 'professeur', 'filiere', 'credits', 'semestre'];
+    const newCours = req.body as Partial<ICoursCreate>;
+    const required = ['code', 'nom'];
     const missing = required.filter((k) => !(newCours as any)[k]);
     
     let response_api: ApiResponseOk<ICours> = {

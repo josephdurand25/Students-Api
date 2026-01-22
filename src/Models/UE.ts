@@ -6,8 +6,13 @@ console.log('DEBUG UniteEnseignement - pool keys:', pool && Object.keys(pool));
 
 class UniteEnseignement {
   // Créer une nouvelle UE
-  static async create(ueData: IUniteEnseignementCreate): Promise<IUniteEnseignement | null> {
+  static async create(ueData: Partial<IUniteEnseignementCreate>): Promise<IUniteEnseignement | null> {
     console.log('Couche modèle - données d\'entrée UE', ueData);
+    
+    if (!ueData || !ueData.code) {
+      console.error('Code UE requis');
+      return null;
+    }
     
     const {
       code, nom, type, credits, coefficient, volume_horaire_total,
@@ -15,14 +20,14 @@ class UniteEnseignement {
     } = ueData;
 
     const params = [
-      code,
-      nom,
-      type,
-      credits,
-      coefficient ?? 1.00,
-      volume_horaire_total ?? null,
-      description ?? null,
-      groupe_cours_code
+      code || null,
+      nom || null,
+      type || null,
+      credits || null,
+      coefficient || 1.00,
+      volume_horaire_total || null,
+      description || null,
+      groupe_cours_code || null
     ];
 
     const query = `INSERT INTO UniteEnseignement 
@@ -44,7 +49,9 @@ class UniteEnseignement {
   }
 
   // Trouver une UE par code
-  static async findByCode(code: string): Promise<IUniteEnseignement | null> {
+  static async findByCode(code?: string): Promise<IUniteEnseignement | null> {
+    if (!code) return null;
+    
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT * FROM UniteEnseignement WHERE code = ?',
       [code]

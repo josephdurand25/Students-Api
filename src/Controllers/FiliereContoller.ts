@@ -17,8 +17,8 @@ import {
 // Créer une nouvelle filière
 export const createFiliere = async (req: Request, res: Response) => {
   try {
-    const filiereData = req.body as IFiliereCreate;
-    const required = ['code', 'nom', 'description', 'departement'];
+    const filiereData = req.body as Partial<IFiliereCreate>;
+    const required = ['code', 'nom'];
     const missing = required.filter((k) => !(filiereData as any)[k]);
     
     let response_api: ApiResponseOk<IFiliere> = {

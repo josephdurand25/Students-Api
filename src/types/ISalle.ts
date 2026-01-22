@@ -2,13 +2,14 @@
 // SALLE
 // ==========================================
 
-export type TypeSalle = 'AMPHI' | 'TD' | 'TP' | 'LABO' | 'ATELIER';
+import { TypeSalle } from "./IGeneral";
+
 
 export interface ISalle {
-  code: string;                    // PK - Ex: "AMPHI-A", "TD-B12", "LABO-INF1"
-  nom: string;                     // Ex: "Amphithéâtre A", "Salle TD B12"
-  capacite: number;                // Nombre de places
-  type: TypeSalle;                 // Type de salle
+  code?: string;                    // PK - Ex: "AMPHI-A", "TD-B12", "LABO-INF1"
+  nom?: string;                     // Ex: "Amphithéâtre A", "Salle TD B12"
+  capacite?: number;                // Nombre de places
+  type?: TypeSalle;                 // Type de salle
   equipements?: any;               // JSON - Ex: {"projecteur": true, "ordinateurs": 30}
 }
 
@@ -112,7 +113,7 @@ export function getNombreOrdinateurs(salle: ISalle): number {
 export function isAdapteeFor(salle: ISalle, typeCours: 'CM' | 'TD' | 'TP'): boolean {
   switch (typeCours) {
     case 'CM':
-      return salle.type === 'AMPHI' || salle.capacite >= 50;
+      return salle.type === 'AMPHI' || salle.capacite! >= 50;
     case 'TD':
       return salle.type === 'TD' || salle.type === 'AMPHI';
     case 'TP':

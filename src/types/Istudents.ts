@@ -11,26 +11,28 @@ export type RoleUtilisateur = 'ETUDIANT' | 'ENSEIGNANT' | 'ADMINISTRATEUR';
 // Interface complète pour un étudiant (jointure Utilisateur + Etudiant)
 export interface IEtudiant {
   // Champs de Utilisateur
-  id: number;
-  nom: string;
-  prenom: string;
-  email: string;
+  id?: number;
+  nom?: string;
+  prenom?: string;
+  email?: string;
   password_hash?: string;
   telephone?: string;
-  role: RoleUtilisateur;
-  statut: StatutUtilisateur;
-  
-  // Champs de Etudiant
-  numero_etudiant: string;
+  role?: RoleUtilisateur;
+  statut?: StatutUtilisateur;
+  numero_etudiant?: string;
   date_naissance?: Date | string;
   lieu_naissance?: string;
   genre?: Genre;
   nationalite?: string;
   adresse_complete?: string;
   region_origine?: string;
-  filiere?: string;
+  specialite_code?: string; 
+  specialite_nom?: string;
+  filiere_code?: string;
+  filiere_nom?: string;
+  // filiere?: string;
   niveau?: string;
-  statut_academique: StatutAcademique;
+  statut_academique?: StatutAcademique;
   photo_profil?: string;
   date_inscription?: Date | string;
   
@@ -51,19 +53,18 @@ export interface IEtudiantFormRequest {
   email: string;
   password?: string;
   telephone?: string;
-  
-  // Champs Etudiant
-  numero_etudiant?: string;  // Généré automatiquement si non fourni
+  numero_etudiant?: string;  
   date_naissance?: Date | string;
   lieu_naissance?: string;
   genre?: Genre;
   nationalite?: string;
   adresse_complete?: string;
   region_origine?: string;
-  filiere?: string;
+  specialite_code: string;
   niveau?: string;
   photo_profil?: string;
   date_inscription?: Date | string;
+  
 }
 
 // Interface pour la mise à jour d'un étudiant
@@ -113,19 +114,6 @@ export interface IEtudiantStatistics {
     abandons: number;
     age_moyen: number;
   }>;
-}
-
-// Interface pour pagination
-export interface IPagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface IPaginationResult<T> {
-  data: T[];
-  pagination: IPagination;
 }
 
 // Interface simplifiée pour l'affichage en liste

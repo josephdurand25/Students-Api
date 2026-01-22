@@ -52,7 +52,11 @@ CREATE TABLE Etudiant (
     genre ENUM('m', 'f', 'autre') ,
     nationalite VARCHAR(50),
     adresse_complete TEXT,
+    adresse_postale VARCHAR(20),
+    pays_origine VARCHAR(100),
+    departement_origine VARCHAR(100),
     region_origine VARCHAR(100),
+    ville VARCHAR(100),
     filiere VARCHAR(100),
     niveau VARCHAR(50),
     statut_academique ENUM('inscrit', 'non_inscrit', 'diplome', 'abandon', 'exclu') DEFAULT 'non_inscrit',
@@ -119,7 +123,7 @@ CREATE TABLE GroupeCours (
     filiere_code VARCHAR(20),
     niveau VARCHAR(50),
     semestre ENUM('S1', 'S2', 'S3', 'S4', 'S5', 'S6','S7','S8','S9','S10') NOT NULL,
-    annee_academique_code VARCHAR(20) NOT NULL,
+    annee_academique_code VARCHAR(20) NOT NULL, -- cette colonne doit être retire, c'est une information redondante
     credits_total INT DEFAULT 0,
     capacite_max INT DEFAULT 30,
     statut ENUM('OUVERT', 'COMPLET', 'FERME', 'ANNULE') DEFAULT 'OUVERT',
@@ -189,7 +193,7 @@ CREATE TABLE InscriptionGroupe (
     etudiant_id INT NOT NULL,
     groupe_cours_code VARCHAR(50) NOT NULL,
     annee_academique VARCHAR(20) NOT NULL,
-    semestre ENUM('S1', 'S2', 'S3', 'S4', 'S5', 'S6','S7','S8','S9','S10') NOT NULL,
+    semestre ENUM('S1', 'S2', 'S3', 'S4', 'S5', 'S6','S7','S8','S9','S10') NOT NULL, -- cette colonne doit être retiré. la table groupeCours a déjà un champ pour le semestre
     statut ENUM('EN_ATTENTE', 'VALIDE', 'REJETE', 'ANNULE') DEFAULT 'EN_ATTENTE',
     date_inscription DATE NOT NULL,
     date_validation DATE,
@@ -362,7 +366,6 @@ END$$
 DELIMITER ;
 
 -- Trigger pour vérifier la capacité du groupe
-DELIMITER $$
 CREATE TRIGGER Verifier_Capacite_Groupe
 BEFORE INSERT ON InscriptionGroupe
 FOR EACH ROW
@@ -370,12 +373,16 @@ BEGIN
     DECLARE capacite_actuelle INT;
     DECLARE capacite_max INT;
     
-    -- Récupérer le nombre d'inscriptions actuelles et la capacité max
-    SELECT COUNT(*), gc.capacite_max INTO capacite_actuelle, capacite_max
+    -- Récupérer le nombre d'inscriptions actuelles
+    SELECT COUNT(*) INTO capacite_actuelle
     FROM InscriptionGroupe ig
-    JOIN GroupeCours gc ON ig.groupe_cours_code = gc.code
     WHERE ig.groupe_cours_code = NEW.groupe_cours_code
     AND ig.statut = 'VALIDE';
+    
+    -- Récupérer la capacité max du groupe
+    SELECT capacite_max INTO capacite_max
+    FROM GroupeCours gc
+    WHERE gc.code = NEW.groupe_cours_code;
     
     IF capacite_actuelle >= capacite_max THEN
         SIGNAL SQLSTATE '45000'

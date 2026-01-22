@@ -5,24 +5,24 @@ import {
   IUniteEnseignementUpdate, 
   IUniteEnseignementWithDetails,
   IUniteEnseignementFilters,
-  TypeUE
 } from '../types/ICours';
 import UniteEnseignement from '../Models/UE';
 import { 
   ApiErrorResponse, 
   ApiErrorValidationResponse, 
   ApiResponseOk,
-  HTTP_STATUS 
+  HTTP_STATUS, 
+  IPaginationResult
 } from '../types/api';
-import { IPaginationResult } from '../types/Istudents';
+import { TypeUE } from '../types/IGeneral';
 
 // Créer une nouvelle UE
 export const createUniteEnseignement = async (req: Request, res: Response) => {
   try {
-    const newUE = req.body as IUniteEnseignementCreate;
+    const newUE = req.body as Partial<IUniteEnseignementCreate>;
     
-    // Validation des champs requis
-    const required = ['code', 'nom', 'type', 'credits', 'groupe_cours_code'];
+    // Validation des champs requis (minimum)
+    const required = ['code', 'nom'];
     const missing = required.filter((field) => !(newUE as any)[field]);
     
     let response_api: ApiResponseOk<IUniteEnseignement> = {

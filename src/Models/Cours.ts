@@ -6,8 +6,13 @@ console.log('DEBUG Cours - pool keys:', pool && Object.keys(pool));
 
 class Cours {
   // Créer un nouveau cours
-  static async create(coursData: ICoursCreate): Promise<ICours | null> {
+  static async create(coursData: Partial<ICoursCreate>): Promise<ICours | null> {
     console.log('Couche modèle - données d\'entrée', coursData);
+    
+    if (!coursData || !coursData.code) {
+      console.error('Code cours requis');
+      return null;
+    }
     
     const {
       code, nom, description_cours, professeur, filiere, credits, semestre,
@@ -17,20 +22,20 @@ class Cours {
 
     // IMPORTANT: Convertir undefined en null pour MySQL
     const params = [
-      code,
-      nom,
-      description_cours ?? null,
-      professeur,
-      filiere,
-      credits,
-      semestre,
-      capacite_max ?? 30,
-      jour ?? null,
-      heure_debut ?? null,
-      heure_fin ?? null,
-      salle ?? null,
-      prerequis ?? null,
-      statut ?? 'actif'
+      code || null,
+      nom || null,
+      description_cours || null,
+      professeur || null,
+      filiere || null,
+      credits || null,
+      semestre || null,
+      capacite_max || 30,
+      jour || null,
+      heure_debut || null,
+      heure_fin || null,
+      salle || null,
+      prerequis || null,
+      statut || 'actif'
     ];
 
     const query = `INSERT INTO cours 

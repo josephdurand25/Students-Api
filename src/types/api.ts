@@ -97,6 +97,18 @@ export type RefreshTokenRequest = {
 // ==========================================
 // PAGINATION
 // ==========================================
+// Interface pour pagination
+export interface IPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface IPaginationResult<T> {
+  data: T[];
+  pagination: IPagination;
+}
 
 export type PaginationParams = {
   page?: number;

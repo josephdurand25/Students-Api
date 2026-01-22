@@ -25,9 +25,9 @@ import { IPaginationResult } from '../types/Istudents';
 
 export const createNote = async (req: Request, res: Response) => {
   try {
-    const newNote = req.body as INoteCreate;
+    const newNote = req.body as Partial<INoteCreate>;
     
-    // Validation des champs requis
+    // Validation des champs requis (minimum)
     const required = ['etudiant_id', 'matiere_code'];
     const missing = required.filter((field) => !(newNote as any)[field]);
     
@@ -57,16 +57,10 @@ export const createNote = async (req: Request, res: Response) => {
       return res.status(response_validation_errors.status_code).json(response_validation_errors);
     }
 
-    // Vérifier qu'au moins une note est fournie
-    if (!newNote.note_cc && !newNote.note_examen && !newNote.note_tp) {
-      response_validation_errors = {
-        ...response_validation_errors,
-        message: 'Au moins une note (CC, Examen ou TP) doit être fournie',
-        errors: {
-          notes: 'Au moins une note doit être renseignée (CC, Examen ou TP)'
-        }
-      };
-      return res.status(response_validation_errors.status_code).json(response_validation_errors);
+    // Vérifier qu'au moins une note est fournie (optionnel maintenant)
+    if (newNote.note_cc === undefined && newNote.note_examen === undefined && newNote.note_tp === undefined) {
+      // Les notes peuvent être NULL au départ
+      console.log('Création de note sans valeur immédiate');
     }
 
     // Valider les notes (entre 0 et 20)

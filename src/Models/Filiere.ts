@@ -12,26 +12,32 @@ class Filiere {
     
     const { code, nom, description, responsable_id } = filiereData;
     
-    try {
-      // Vérifier si le code existe déjà
-      const existing = await this.findByCode(code);
-      if (existing) {
-        throw new Error('Une filière avec ce code existe déjà');
+    // Vérifier si le code existe déjà (si fourni)
+    if (code) {
+      try {
+        const existing = await this.findByCode(code);
+        if (existing) {
+          throw new Error('Une filière avec ce code existe déjà');
+        }
+      } catch (error) {
+        if ((error as any).message?.includes('existe déjà')) throw error;
       }
-      
+    }
+    
+    try {
       const query = `
-        INSERT INTO Filiere (code, nom, description_filiere, responsable_id, statut)
-        VALUES (?, ?, ?, ?, ?, TRUE)
+        INSERT INTO Filiere (code, nom, description, responsable_id, statut)
+        VALUES (?, ?, ?, ?, 'ACTIVE')
       `;
       
       const [result] = await pool.execute<ResultSetHeader>(query, [
-        code,
-        nom,
+        code || null,
+        nom || null,
         description || null,
         responsable_id || null
       ]);
       
-      return this.findByCode(code);
+      return code ? this.findByCode(code) : null;
     } catch (error) {
       console.error('Erreur création filière:', error);
       throw error;
@@ -39,10 +45,12 @@ class Filiere {
   }
   
   // Trouver une filière par son code
-  static async findByCode(code: string): Promise<IFiliere | null> {
+  static async findByCode(code?: string): Promise<IFiliere | null> {
+    if (!code) return null;
+    
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
-        f.code, f.nom, f.description_filiere,, f.responsable_id, f.statut,
+        f.code, f.nom, f.description, f.responsable_id, f.statut,
         u.nom as responsable_nom,
         u.prenom as responsable_prenom
       FROM Filiere f
@@ -69,9 +77,11 @@ class Filiere {
   }
   
   // Trouver par nom
-  static async findByNom(nom: string): Promise<IFiliere | null> {
+  static async findByNom(nom?: string): Promise<IFiliere | null> {
+    if (!nom) return null;
+    
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT code, nom, description_filiere, , responsable_id, statut
+      `SELECT code, nom, description, responsable_id, statut
        FROM Filiere 
        WHERE nom = ?`,
       [nom]
@@ -88,7 +98,7 @@ class Filiere {
     const offset = (page - 1) * limit;
     let query = `
       SELECT 
-        f.code, f.nom, f.description_filiere, f.responsable_id, f.statut,
+        f.code, f.nom, f.description, f.responsable_id, f.statut,
         u.nom as responsable_nom,
         u.prenom as responsable_prenom
       FROM Filiere f
@@ -100,7 +110,7 @@ class Filiere {
     // Appliquer les filtres
     if (filters.statut !== undefined) {
       query += ' AND f.statut = ?';
-      params.push(filters.statut === 'true' ? 1 : 0);
+      params.push(filters.statut);
     }
     
     if (filters.search) {

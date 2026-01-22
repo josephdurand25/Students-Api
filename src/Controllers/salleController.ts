@@ -1,14 +1,15 @@
 import type { Request, Response } from 'express';
 import { ApiErrorResponse, ApiErrorValidationResponse, ApiResponseOk } from '../types/api';
 import Salle from '../Models/Salle';
-import { ISalle, ISalleCreate, TypeSalle } from '../types/ISalle';
+import { ISalle, ISalleCreate } from '../types/ISalle';
+import { TypeSalle } from '../types/IGeneral';
 
 
 // Créer une nouvelle salle
 export const createSalle = async (req: Request, res: Response) => {
   try {
-    const salleData = req.body as ISalleCreate;
-    const required = ['nom', 'capacite', 'type'];
+    const salleData = req.body as Partial<ISalleCreate>;
+    const required = ['code', 'nom'];
     const missing = required.filter((k) => !(salleData as any)[k]);
     
     let response_api: ApiResponseOk<ISalle> = {
@@ -38,7 +39,7 @@ export const createSalle = async (req: Request, res: Response) => {
     
     // Valider le type de salle
     const validTypes: TypeSalle[] = ['AMPHI', 'TD', 'TP', 'LABO', 'ATELIER'];
-    if (!validTypes.includes(salleData.type)) {
+    if (!validTypes.includes(salleData.type!)) {
       response_validation_errors = {
         ...response_validation_errors,
         message: 'Type de salle invalide.',

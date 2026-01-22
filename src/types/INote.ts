@@ -12,8 +12,8 @@ export type SessionExamen = 'NORMALE' | 'RATTRAPAGE' | 'SPECIALE';
 
 export interface INote {
   id?: number;
-  etudiant_id: number;
-  matiere_code: string;  // Lié à Matiere au lieu de cours_id
+  etudiant_id?: number;
+  matiere_code?: string;  // Lié à Matiere au lieu de cours_id
   note_cc?: number;      // DECIMAL(4,2)
   note_examen?: number;  // DECIMAL(4,2)
   note_tp?: number;      // DECIMAL(4,2)

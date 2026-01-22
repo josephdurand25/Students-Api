@@ -3,13 +3,13 @@
 // ==========================================
 
 export interface IFiliere {
-  code: string;                    // PK - Ex: "INF", "GC", "ELEC"
-  nom: string;                     // Ex: "Informatique", "Génie Civil"
-  description: string;            
-  departement: string;             // Ex: "Sciences et Technologies"
+  code?: string;                    // PK - Ex: "INF", "GC", "ELEC"
+  nom?: string;                     // Ex: "Informatique", "Génie Civil"
+  description?: string;            
+  departement?: string;             // Ex: "Sciences et Technologies"
   niveaux_offerts?: any;           // JSON - Ex: ["L1", "L2", "L3", "M1", "M2"]
   responsable_id?: number;         // FK vers Enseignant
-  statut: 'actif' | 'inactif';
+  statut?: 'actif' | 'inactif';
 }
 
 export interface IFiliereCreate extends IFiliere {}

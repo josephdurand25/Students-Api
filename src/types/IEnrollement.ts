@@ -1,10 +1,8 @@
+import type { Semestre, StatutInscription } from "./IGeneral";
 // ==========================================
 // INTERFACES INSCRIPTIONS - Version 2.0
 // Basé sur database_v2.sql avec InscriptionGroupe
 // ==========================================
-
-export type StatutInscription = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'ANNULE';
-export type Semestre = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'S8' | 'S9' | 'S10';
 
 // ==========================================
 // INSCRIPTION GROUPE
@@ -12,13 +10,13 @@ export type Semestre = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'S8' | '
 
 export interface IInscriptionGroupe {
   id?: number;
-  numero_inscription: string;
-  etudiant_id: number;
-  groupe_cours_code: string;
-  annee_academique: string;
-  semestre: Semestre;
-  statut: StatutInscription;
-  date_inscription: Date | string;
+  numero_inscription?: string;
+  etudiant_id?: number;
+  groupe_cours_code?: string;
+  annee_academique?: string;
+  semestre?: Semestre;
+  statut?: StatutInscription;
+  date_inscription?: Date | string;
   date_validation?: Date | string;
   fiche_url?: string;
   valide_par_admin_id?: number;
@@ -60,10 +58,10 @@ export type ModePaiement = 'ESPECES' | 'VIREMENT' | 'MOBILE_MONEY' | 'CHEQUE';
 
 export interface IPaiementDroits {
   id?: number;
-  inscription_groupe_id: number;
-  montant_total: number;
-  montant_paye: number;
-  statut_paiement: StatutPaiement;  // Calculé automatiquement par trigger
+  inscription_groupe_id?: number;
+  montant_total?: number;
+  montant_paye?: number;
+  statut_paiement?: StatutPaiement;  // Calculé automatiquement par trigger
   mode_paiement?: ModePaiement;
   reference_paiement?: string;
   date_echeance?: Date | string;

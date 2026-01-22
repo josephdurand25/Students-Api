@@ -13,17 +13,17 @@ import {
   ApiErrorResponse, 
   ApiErrorValidationResponse, 
   ApiResponseOk,
-  HTTP_STATUS 
+  HTTP_STATUS, 
+  IPaginationResult
 } from '../types/api';
-import { IPaginationResult } from '../types/Istudents';
 
 // Créer un nouveau groupe de cours
 export const createGroupeCours = async (req: Request, res: Response) => {
   try {
-    const newGroupe = req.body as IGroupeCoursCreate;
+    const newGroupe = req.body as Partial<IGroupeCoursCreate>;
     
     // Validation des champs requis
-    const required = ['code', 'nom', 'semestre', 'annee_academique_code'];
+    const required = ['code', 'nom'];
     const missing = required.filter((field) => !(newGroupe as any)[field]);
     
     let response_api: ApiResponseOk<IGroupeCours> = {

@@ -6,8 +6,13 @@ console.log('DEBUG GroupeCours - pool keys:', pool && Object.keys(pool));
 
 class GroupeCours {
   // Créer un nouveau groupe de cours
-  static async create(groupeData: IGroupeCoursCreate): Promise<IGroupeCours | null> {
+  static async create(groupeData: Partial<IGroupeCoursCreate>): Promise<IGroupeCours | null> {
     console.log('Couche modèle - données d\'entrée groupe', groupeData);
+    
+    if (!groupeData || !groupeData.code) {
+      console.error('Code groupe requis');
+      return null;
+    }
     
     const {
       code, nom, filiere_code, niveau, semestre, annee_academique_code,
@@ -15,15 +20,15 @@ class GroupeCours {
     } = groupeData;
 
     const params = [
-      code,
-      nom,
-      filiere_code ?? null,
-      niveau ?? null,
-      semestre,
-      annee_academique_code,
-      credits_total ?? 0,
-      capacite_max ?? 30,
-      statut ?? 'OUVERT'
+      code || null,
+      nom || null,
+      filiere_code || null,
+      niveau || null,
+      semestre || null,
+      annee_academique_code || null,
+      credits_total || 0,
+      capacite_max || 30,
+      statut || 'OUVERT'
     ];
 
     const query = `INSERT INTO GroupeCours 
@@ -45,7 +50,9 @@ class GroupeCours {
   }
 
   // Trouver un groupe par code
-  static async findByCode(code: string): Promise<IGroupeCours | null> {
+  static async findByCode(code?: string): Promise<IGroupeCours | null> {
+    if (!code) return null;
+    
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT * FROM GroupeCours WHERE code = ?',
       [code]

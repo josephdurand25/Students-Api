@@ -1,30 +1,26 @@
 // ==========================================
-// INTERFACES COURS - Version 2.0
-// Basé sur database_v2.sql avec GroupeCours, UniteEnseignement, Matiere
+// INTERFACES matiere - Version 2.0
+// 
 // ==========================================
 
-import { TypeSalle } from "./ISalle";
+import { Semestre, StatutGroupe, TypeSalle, TypeUE } from "./IGeneral";
+import { IMatiere } from "./IMatiere";
 
-export type Semestre = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7' | 'S8' | 'S9' | 'S10';
-export type StatutGroupe = 'OUVERT' | 'COMPLET' | 'FERME' | 'ANNULE';
-export type TypeUE = 'OBLIGATOIRE' | 'OPTIONNEL' | 'TRANSVERSAL';
-export type TypeCours = 'CM' | 'TD' | 'TP';
-export type JourSemaine = 'LUNDI' | 'MARDI' | 'MERCREDI' | 'JEUDI' | 'VENDREDI' | 'SAMEDI';
 
 // ==========================================
 // GROUPE DE COURS
 // ==========================================
 
 export interface IGroupeCours {
-  code: string;
-  nom: string;
+  code?: string;
+  nom?: string;
   filiere_code?: string;
   niveau?: string;
-  semestre: Semestre;
-  annee_academique_code: string;
-  credits_total: number;
-  capacite_max: number;
-  statut: StatutGroupe;
+  semestre?: Semestre;
+  annee_academique_code?: string;
+  credits_total?: number;
+  capacite_max?: number;
+  statut?: StatutGroupe;
   created_at?: Date | string;
 }
 
@@ -45,11 +41,11 @@ export interface IGroupeCoursWithDetails extends IGroupeCours {
 // ==========================================
 
 export interface IUniteEnseignement {
-  code: string;
-  nom: string;
-  type: TypeUE;
-  credits: number;
-  coefficient: number;
+  code?: string;
+  nom?: string;
+  type?: TypeUE;
+  credits?: number;
+  coefficient?: number;
   volume_horaire_total?: number;
   description?: string;
   groupe_cours_code: string;
@@ -63,36 +59,7 @@ export interface IUniteEnseignementWithDetails extends IUniteEnseignement {
   matieres?: IMatiere[];
 }
 
-// ==========================================
-// MATIÈRE
-// ==========================================
 
-export interface IMatiere {
-  code: string;
-  nom: string;
-  type_cours: TypeCours;
-  credits: number;
-  coefficient: number;
-  volume_horaire?: number;
-  salle_code?: string;
-  jour?: JourSemaine;
-  heure_debut?: string;  // TIME format
-  heure_fin?: string;    // TIME format
-  unite_enseignement_code: string;
-  enseignant_id?: number;
-}
-
-export interface IMatiereCreate extends IMatiere {}
-
-export interface IMatiereUpdate extends Partial<Omit<IMatiere, 'code'>> {}
-
-export interface IMatiereWithDetails extends IMatiere {
-  salle_nom?: string;
-  salle_capacite?: number;
-  enseignant_nom?: string;
-  enseignant_prenom?: string;
-  ue_nom?: string;
-}
 
 // ==========================================
 // SALLE
@@ -190,23 +157,6 @@ export interface IGroupeCoursFilters {
   credits_max?: number;
 }
 
-export interface IMatiereFilters {
-  unite_enseignement_code?: string;
-  type_cours?: TypeCours;
-  enseignant_id?: number;
-  jour?: JourSemaine;
-  search?: string;
-  avec_notes?: boolean;  // Inclure les notes dans les résultats
-  avec_presences?: boolean;  // Inclure les présences dans les résultats
-  credits_min?: number;
-  credits_max?: number;
-  volume_horaire_min?: number;
-  volume_horaire_max?: number;
-  salle_code?: string;
-  groupe_cours_code?: string;  // Via l'UE parente
-  annee_academique_code?: string;  // Via le groupe parent
-  semestre?: Semestre;  // Via le groupe parent
-}
 
 export interface IFiliereFilters {
   departement?: string;
@@ -264,30 +214,7 @@ export interface IGroupeCoursStatistics {
   }>;
 }
 
-export interface IMatiereStatistics {
-  total_matieres: number;
-  par_type: {
-    CM: number;
-    TD: number;
-    TP: number;
-  };
-  volume_horaire_total: number;
-  credits_total: number;
-  par_ue: Array<{
-    ue_code: string;
-    ue_nom: string;
-    nombre_matieres: number;
-    volume_horaire: number;
-    credits: number;
-  }>;
-  par_enseignant: Array<{
-    enseignant_id: number;
-    enseignant_nom: string;
-    enseignant_prenom: string;
-    nombre_matieres: number;
-    volume_horaire: number;
-  }>;
-}
+
 
 // ==========================================
 // COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME
@@ -336,12 +263,3 @@ export interface CapacityCheckResult {
   nombre_inscrits: number;
 }
 
-// ==========================================
-// HELPERS
-// ==========================================
-
-export const SEMESTRES: Semestre[] = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'];
-export const JOURS_SEMAINE: JourSemaine[] = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI'];
-export const TYPES_COURS: TypeCours[] = ['CM', 'TD', 'TP'];
-export const TYPES_UE: TypeUE[] = ['OBLIGATOIRE', 'OPTIONNEL', 'TRANSVERSAL'];
-export const TYPES_SALLE: TypeSalle[] = ['AMPHI', 'TD', 'TP', 'LABO', 'ATELIER'];

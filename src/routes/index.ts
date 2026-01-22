@@ -10,7 +10,7 @@ const router: Router = express.Router();
 
 router.use('/students', studentRoutes);
 router.use('/ues', ueRoutes);
-router.use('/courses', matiereRoutes);
+router.use('/matieres', matiereRoutes);
 router.use('/group', groupUeRoutes);
 router.use('/salle', salleRoutes);
 router.use('/filiere', filiereRoute);
